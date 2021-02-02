@@ -37,55 +37,34 @@ class CreateOrderService {
       throw new AppError('Customer not found.');
     }
 
-    const productsId = products.map(product => ({ id: product.id }));
+    const allProducts = await this.productsRepository.findAllById(products);
 
-    const allProducts = await this.productsRepository.findAllById(productsId);
-
-    if (products.length !== allProducts.length) {
-      throw new AppError('Invalid product on order');
-    }
-
-    const orderProducts = allProducts.map(product => {
-      const productFromOrder = products.find(
-        orderProduct => orderProduct.id === product.id,
+    const orderProducts = products.map(product => {
+      const storedProduct = allProducts.find(
+        productFromDatabase => productFromDatabase.id === product.id,
       );
 
-      if (!productFromOrder) {
+      if (!storedProduct) {
         throw new AppError('Product not found.');
       }
 
-      if (product.quantity < productFromOrder.quantity) {
+      if (storedProduct.quantity < product.quantity) {
         throw new AppError('Insufficient product quantity');
       }
 
       return {
         product_id: product.id,
-        price: product.price,
-        quantity: productFromOrder.quantity,
+        price: storedProduct.price,
+        quantity: product.quantity,
       };
     });
 
-    const order = this.ordersRepository.create({
+    const order = await this.ordersRepository.create({
       customer,
       products: orderProducts,
     });
 
-    const subtractedProducts = allProducts.map(product => {
-      const productFromOrder = products.find(
-        orderProduct => orderProduct.id === product.id,
-      );
-
-      if (!productFromOrder) {
-        throw new AppError('Product not found.');
-      }
-
-      return {
-        id: product.id,
-        quantity: product.quantity - productFromOrder.quantity,
-      };
-    });
-
-    await this.productsRepository.updateQuantity(subtractedProducts);
+    await this.productsRepository.updateQuantity(products);
 
     return order;
   }

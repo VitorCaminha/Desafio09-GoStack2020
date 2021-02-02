@@ -64,10 +64,10 @@ class ProductsRepository implements IProductsRepository {
       );
 
       if (!productToUpdate) {
-        throw new AppError('Product not found.', 404);
+        throw new AppError('Product not found.');
       }
 
-      productToUpdate.quantity = product.quantity;
+      productToUpdate.quantity -= product.quantity;
 
       return productToUpdate;
     });
